@@ -1,101 +1,183 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useState, useEffect, Suspense } from 'react';
+import { motion } from 'framer-motion';
+import { Card } from '@tremor/react';
+import { FaSearch, FaStar } from 'react-icons/fa';
+import Header from './components/Header';
+import ChannelStats from './components/ChannelStats';
+import LatestVideosStats from './components/LatestVideosStats';
+import { 
+  getChannelStats, 
+  getLatestVideosStats, 
+  type YouTubeChannelStats,
+  type YouTubeVideoStats 
+} from './services/youtube';
+import { storageService } from './services/storage';
+import { useSearchParams } from 'next/navigation';
+
+// Composant qui utilise useSearchParams
+function SearchParamsComponent() {
+  const searchParams = useSearchParams();
+  const [channelId, setChannelId] = useState<string>(searchParams.get('channelId') || '');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState<YouTubeChannelStats | null>(null);
+  const [videoStats, setVideoStats] = useState<YouTubeVideoStats[] | null>(null);
+  const [isFavorite, setIsFavorite] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get('channelId')) {
+      setChannelId(searchParams.get('channelId') || '');
+      handleSearch(searchParams.get('channelId') || '');
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (stats) {
+      setIsFavorite(storageService.isInFavorites(channelId));
+    }
+  }, [stats, channelId]);
+
+  const handleSearch = async (id: string) => {
+    if (!id) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const channelStats = await getChannelStats(id);
+      setStats(channelStats);
+      
+      const videos = await getLatestVideosStats(id);
+      setVideoStats(videos);
+
+      // Ajouter à l'historique
+      if (channelStats) {
+        storageService.addToHistory({
+          id: channelStats.id,
+          title: channelStats.title,
+          thumbnailUrl: channelStats.thumbnails.medium.url,
+          subscriberCount: channelStats.subscriberCount,
+          viewCount: channelStats.viewCount,
+          videoCount: channelStats.videoCount,
+          timestamp: new Date().toISOString()
+        });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+      setStats(null);
+      setVideoStats(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    handleSearch(channelId);
+  };
+
+  const handleToggleFavorite = () => {
+    if (!stats) return;
+
+    if (isFavorite) {
+      storageService.removeFromFavorites(channelId);
+    } else {
+      storageService.addToFavorites({
+        id: channelId,
+        title: stats.title,
+        thumbnailUrl: stats.thumbnails.medium.url,
+        subscriberCount: stats.subscriberCount,
+        viewCount: stats.viewCount,
+        videoCount: stats.videoCount,
+        timestamp: new Date().toISOString()
+      });
+    }
+    setIsFavorite(!isFavorite);
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+    <div className="space-y-6">
+      <Card className="bg-white dark:bg-youtube-dark p-6">
+        <form 
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSearch(channelId);
+          }}
+          className="space-y-4"
+        >
+          <div>
+            <label htmlFor="channelId" className="block text-sm font-medium text-youtube-dark dark:text-white mb-2">
+              ID de la chaîne YouTube
+            </label>
+            <input
+              type="text"
+              id="channelId"
+              value={channelId}
+              onChange={(e) => setChannelId(e.target.value)}
+              placeholder="Exemple: UCX6OQ3DkcsbYNE6H8uQQuVA"
+              className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-lg 
+                       bg-white dark:bg-youtube-darker text-youtube-dark dark:text-white
+                       focus:ring-2 focus:ring-youtube-red focus:border-transparent"
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+          </div>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-youtube-red text-white py-2 px-4 rounded-lg
+                     hover:bg-red-700 transition-colors
+                     disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
-            Read our docs
-          </a>
+            {isLoading ? 'Chargement...' : 'Analyser'}
+          </button>
+        </form>
+
+        {error && (
+          <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-lg">
+            {error}
+          </div>
+        )}
+      </Card>
+
+      {stats && (
+        <div className="relative">
+          <button
+            onClick={handleToggleFavorite}
+            className={`absolute top-4 right-4 p-2 rounded-full transition-colors ${
+              isFavorite 
+                ? 'text-youtube-red hover:text-red-700' 
+                : 'text-youtube-gray hover:text-youtube-red'
+            }`}
+            title={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+          >
+            <FaStar className="text-2xl" />
+          </button>
+          <ChannelStats stats={stats} />
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      )}
+      {videoStats && videoStats.length > 0 && (
+        <LatestVideosStats videos={videoStats} channelId={channelId} />
+      )}
     </div>
   );
 }
+
+// Page principale avec Suspense
+export default function Home() {
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-youtube-darker">
+      <Header />
+      
+      <main className="container mx-auto px-4 py-8">
+        <Suspense fallback={
+          <div className="flex justify-center items-center min-h-[200px]">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-youtube-red"></div>
+          </div>
+        }>
+          <SearchParamsComponent />
+        </Suspense>
+      </main>
+    </div>
+  );
+} 

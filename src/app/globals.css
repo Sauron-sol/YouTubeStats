@@ -3,19 +3,91 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --youtube-red: #FF0000;
+  --youtube-dark: #282828;
+  --youtube-darker: #1F1F1F;
+  --youtube-light: #FFFFFF;
+  --youtube-gray: #909090;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  body {
+    @apply antialiased text-youtube-dark dark:text-white bg-gray-50 dark:bg-youtube-darker;
   }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  .tremor-Card-root {
+    @apply shadow-custom dark:shadow-none transition-all duration-200;
+  }
 }
+
+/* Scrollbar personnalisée */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100 dark:bg-youtube-dark;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-youtube-gray rounded-full hover:bg-youtube-red transition-colors;
+}
+
+/* Animations */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Focus styles */
+*:focus {
+  @apply outline-none ring-2 ring-youtube-red ring-opacity-50;
+}
+
+/* Styles pour les cartes */
+.card-hover {
+  @apply hover:shadow-lg hover:-translate-y-1 transition-all duration-200;
+}
+
+/* Styles pour le texte */
+.gradient-text {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-youtube-red to-red-600;
+}
+
+/* Scrollbar personnalisée pour les commentaires */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 0, 0, 0.4);
+}
+
+/* Mode sombre */
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 0, 0, 0.3);
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 0, 0, 0.5);
+} 
