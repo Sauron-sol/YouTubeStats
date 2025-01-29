@@ -11,6 +11,7 @@ const getApiKey = () => {
 };
 
 export interface YouTubeChannelStats {
+  id: string;
   subscriberCount: string;
   viewCount: string;
   videoCount: string;
@@ -44,6 +45,7 @@ export const getChannelStats = async (channelId: string): Promise<YouTubeChannel
     }
 
     return {
+      id: channel.id,
       subscriberCount: channel.statistics.subscriberCount,
       viewCount: channel.statistics.viewCount,
       videoCount: channel.statistics.videoCount,

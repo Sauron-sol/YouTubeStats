@@ -19,25 +19,32 @@ import { useSearchParams } from 'next/navigation';
 // Composant qui utilise useSearchParams
 function SearchParamsComponent() {
   const searchParams = useSearchParams();
-  const [channelId, setChannelId] = useState<string>(searchParams.get('channelId') || '');
+  const [channelId, setChannelId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<YouTubeChannelStats | null>(null);
   const [videoStats, setVideoStats] = useState<YouTubeVideoStats[] | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
 
+  // Initialisation avec les paramètres d'URL ou la dernière chaîne consultée
   useEffect(() => {
-    if (searchParams.get('channelId')) {
-      setChannelId(searchParams.get('channelId') || '');
-      handleSearch(searchParams.get('channelId') || '');
+    const urlChannelId = searchParams.get('channelId');
+    const lastChannelId = storageService.getLastChannel();
+    
+    if (urlChannelId) {
+      setChannelId(urlChannelId);
+      handleSearch(urlChannelId);
+    } else if (lastChannelId) {
+      setChannelId(lastChannelId);
+      handleSearch(lastChannelId);
     }
   }, [searchParams]);
 
   useEffect(() => {
     if (stats) {
-      setIsFavorite(storageService.isInFavorites(channelId));
+      setIsFavorite(storageService.isInFavorites(stats.id));
     }
-  }, [stats, channelId]);
+  }, [stats]);
 
   const handleSearch = async (id: string) => {
     if (!id) return;
@@ -52,18 +59,19 @@ function SearchParamsComponent() {
       const videos = await getLatestVideosStats(id);
       setVideoStats(videos);
 
+      // Sauvegarder l'ID de la chaîne
+      storageService.setLastChannel(id);
+
       // Ajouter à l'historique
-      if (channelStats) {
-        storageService.addToHistory({
-          id: channelStats.id,
-          title: channelStats.title,
-          thumbnailUrl: channelStats.thumbnails.medium.url,
-          subscriberCount: channelStats.subscriberCount,
-          viewCount: channelStats.viewCount,
-          videoCount: channelStats.videoCount,
-          timestamp: new Date().toISOString()
-        });
-      }
+      storageService.addToHistory({
+        id: channelStats.id,
+        title: channelStats.title,
+        thumbnailUrl: channelStats.thumbnails.medium.url,
+        subscriberCount: channelStats.subscriberCount,
+        viewCount: channelStats.viewCount,
+        videoCount: channelStats.videoCount,
+        timestamp: new Date().toISOString()
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
       setStats(null);
@@ -82,10 +90,10 @@ function SearchParamsComponent() {
     if (!stats) return;
 
     if (isFavorite) {
-      storageService.removeFromFavorites(channelId);
+      storageService.removeFromFavorites(stats.id);
     } else {
       storageService.addToFavorites({
-        id: channelId,
+        id: stats.id,
         title: stats.title,
         thumbnailUrl: stats.thumbnails.medium.url,
         subscriberCount: stats.subscriberCount,

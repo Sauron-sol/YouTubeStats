@@ -11,6 +11,7 @@ export interface StoredChannel {
 class StorageService {
   private readonly HISTORY_KEY = 'youtube-stats-history';
   private readonly FAVORITES_KEY = 'youtube-stats-favorites';
+  private readonly LAST_CHANNEL_KEY = 'youtube-stats-last-channel';
   private readonly MAX_HISTORY_ITEMS = 50;
 
   // Historique
@@ -73,6 +74,22 @@ class StorageService {
     if (typeof window === 'undefined') return false;
     const favorites = this.getFavorites();
     return favorites.some(item => item.id === channelId);
+  }
+
+  // Gestion de la dernière chaîne consultée
+  getLastChannel(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem(this.LAST_CHANNEL_KEY);
+  }
+
+  setLastChannel(channelId: string) {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(this.LAST_CHANNEL_KEY, channelId);
+  }
+
+  clearLastChannel() {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem(this.LAST_CHANNEL_KEY);
   }
 }
 
